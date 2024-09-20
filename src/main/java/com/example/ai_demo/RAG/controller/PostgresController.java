@@ -13,10 +13,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
@@ -25,7 +22,8 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-@RestController("/ai/postagres")
+@RestController
+@RequestMapping("/ai/postagres")
 public class PostgresController {
 
     private VectorStore vectorStore;
