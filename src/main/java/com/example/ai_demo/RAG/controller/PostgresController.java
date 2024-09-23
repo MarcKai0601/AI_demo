@@ -20,18 +20,23 @@ import reactor.core.publisher.Flux;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
 @RequestMapping("/ai/postagres")
 public class PostgresController {
 
+    @Autowired
     private VectorStore vectorStore;
 
     @Autowired
-    public PostgresController(VectorStore vectorStore) {
-        this.vectorStore = vectorStore;
-    }
+    private OllamaChatModel chatModel;
+
+//    @Autowired
+//    public PostgresController(VectorStore vectorStore) {
+//        this.vectorStore = vectorStore;
+//    }
 
     @PostMapping("/analysisPDF")
     public String analysisPDF(@RequestParam(value = "file") MultipartFile file) {
@@ -57,6 +62,18 @@ public class PostgresController {
             log.error(e.getMessage(), e);
         }
         return "OK";
+    }
+
+    @GetMapping("/ragMessage")
+    public String getMessageByRAG(@RequestParam(value = "message") String message) {
+        List<Document> documents = vectorStore.similaritySearch(message);
+        String base = """
+                請使用以下資料作為參考進行回答%s
+                %s
+                """;
+        Prompt prompt = new Prompt(String.format(base, message, documents.stream().map(Document::getContent).collect(Collectors.joining("\n"))));
+        ChatResponse call = chatModel.call(prompt);
+        return call.getResult().getOutput().getContent();
     }
 
 }
