@@ -68,12 +68,12 @@ public class test {
                 }
             }
 
-            // Print the last section
-            if (currentSection != null) {
-                System.out.println("章節標題: " + currentSection);
-                System.out.println(contentBuilder.toString().trim());
-                System.out.println("-------------------");
-            }
+//            // Print the last section
+//            if (currentSection != null) {
+//                System.out.println("章節標題: " + currentSection);
+//                System.out.println(contentBuilder.toString().trim());
+//                System.out.println("-------------------");
+//            }
 
             reader.close();
             System.out.println("========讀取完畢========");

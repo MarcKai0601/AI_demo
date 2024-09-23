@@ -17,9 +17,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -76,4 +82,61 @@ public class PostgresController {
         return call.getResult().getOutput().getContent();
     }
 
+    @PostMapping("/analysisMD")
+    public String analysisMD(@RequestParam(value = "file") MultipartFile file) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            String line;
+            StringBuilder contentBuilder = new StringBuilder();
+            String currentSection = null;
+            List<Document> info = new ArrayList<>();
+
+            // 正则表达式匹配标题（如 ####, ###, ##, #）
+            Pattern headingPattern = Pattern.compile("^(#+)\\s*(.+)");
+
+            while ((line = reader.readLine()) != null) {
+                Matcher matcher = headingPattern.matcher(line);
+
+                if (matcher.matches()) {
+                    // 检查标题级别是否为4或更高
+                    if (matcher.group(1).length() >= 4) {
+                        // 如果有当前章节，打印出来
+                        if (currentSection != null) {
+                            System.out.println("章節標題: " + currentSection);
+                            System.out.println(contentBuilder.toString().trim());
+                            System.out.println("---------" + currentSection + " END ----------");
+
+                            info.add(new Document(currentSection + contentBuilder.toString()));
+                            vectorStore.add(info);
+                        }
+
+                        // 开始一个新章节
+                        currentSection = matcher.group(2); // 获取标题
+                        contentBuilder.setLength(0); // 清空内容
+                    }
+                } else {
+                    // 如果不是标题，将行附加到当前章节内容
+                    if (currentSection != null) {
+                        contentBuilder.append(line).append("\n");
+                    }
+                }
+            }
+
+            // 打印最后一节
+            if (currentSection != null) {
+                System.out.println("章節標題: " + currentSection);
+                System.out.println(contentBuilder.toString().trim());
+                System.out.println("---------" + currentSection + " END ----------");
+            }
+
+            System.out.println("========讀取完畢========");
+
+        } catch (IOException e) {
+            log.error(e.getMessage(), e);
+        }
+        return "OK";
+    }
+
+//     info.add(new Document(currentSection));
+//                        info.add(new Document(contentBuilder.toString()));
+//                        vectorStore.add(info);
 }
