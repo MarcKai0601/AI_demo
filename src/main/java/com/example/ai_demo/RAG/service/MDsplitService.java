@@ -65,7 +65,7 @@ public class MDsplitService {
                             docMap.put("Title", currentSection);
 
                             if (pgVectorStore.SearchMataData(currentSection, PayName) != null) {
-                                throw new AI_DemoException(ErrorEnum.REPEATED_WRITUNG_ERROR, ErrorEnum.REPEATED_WRITUNG_ERROR.getMessage());
+                                vectorStore.delete(pgVectorStore.SearchMataData(currentSection, PayName));
                             }
 
                             info.add(new Document(currentSection + "\n" + contentBuilder.toString(), docMap));
@@ -98,7 +98,7 @@ public class MDsplitService {
 
 
                 if (pgVectorStore.SearchMataData(currentSection, PayName) != null) {
-                    throw new AI_DemoException(ErrorEnum.REPEATED_WRITUNG_ERROR, ErrorEnum.REPEATED_WRITUNG_ERROR.getMessage());
+                    vectorStore.delete(pgVectorStore.SearchMataData(currentSection, PayName));
                 }
 
                 info.add(new Document(currentSection + "\n" + contentBuilder.toString(), docMap));
@@ -111,6 +111,7 @@ public class MDsplitService {
             log.error(e.getMessage(), e);
         }
     }
+
 
     // 模板，這裡假設已經有一個 PromptTemplate 類
 //    private final PromptTemplate template = new PromptTemplate("## {PayName}\n\n{content}");

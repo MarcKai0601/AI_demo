@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import javax.print.Doc;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +77,7 @@ public class PgVectorStore implements VectorStore {
                     // 檢查 metadata 是否為 null，處理為空情況
                     String content = rs.getString("content");
                     String metadataJson = rs.getString("metadata");
+                    String id = rs.getString("id");
 
                     Map<String, Object> metadata = new HashMap<>();
 
@@ -89,7 +91,7 @@ public class PgVectorStore implements VectorStore {
                     }
 
                     // 將結果集映射為 Document 對象
-                    Document document = new Document(content, metadata);
+                    Document document = new Document(id,content, metadata);
 
                     return document.getId();
                 }
