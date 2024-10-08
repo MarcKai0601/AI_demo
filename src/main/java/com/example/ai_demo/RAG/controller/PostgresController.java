@@ -1,6 +1,9 @@
 package com.example.ai_demo.RAG.controller;
 
+import com.example.ai_demo.RAG.enumlist.ErrorEnum;
+import com.example.ai_demo.RAG.exception.AI_DemoException;
 import com.example.ai_demo.RAG.service.MDsplitService;
+import com.example.ai_demo.RAG.service.PgVectorStore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.RandomAccessReadBuffer;
@@ -16,6 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.print.Doc;
+import javax.swing.event.ListDataEvent;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +43,9 @@ public class PostgresController {
 
     @Autowired
     private MDsplitService mDsplitService;
+
+    @Autowired
+    private PgVectorStore pgVectorStore;
 
 //    @PostMapping("/analysisPDF")
 //    public String analysisPDF(@RequestParam(value = "file") MultipartFile file) {
@@ -160,12 +168,12 @@ public class PostgresController {
 
         // 準備一個 PromptTemplate
         PromptTemplate template = new PromptTemplate("""
-    你只會用中文回覆,
-    請使用以下資料作為參考進行回答:
-    問題: {message}
-    參考資料: 
-    {documentsContent}
-    """);
+                你只會用中文回覆,
+                請使用以下資料作為參考進行回答:
+                問題: {message}
+                參考資料: 
+                {documentsContent}
+                """);
 
         // 檢查 JSON 的正則表達式
         Pattern jsonPattern = Pattern.compile("\\{\\s*\".*?\"\\s*:\\s*\".*?\"\\s*\\}");
@@ -203,13 +211,54 @@ public class PostgresController {
     }
 
 
+    @GetMapping("/ragMessageTest")
+    public String getMessageByTest(@RequestParam(value = "message") String message) {
+
+        List<Document> documents = pgVectorStore.similaritySearch(message);
+
+        // 檢查 JSON 的正則表達式
+        Pattern jsonPattern = Pattern.compile("\\{\\s*\".*?\"\\s*:\\s*\".*?\"\\s*\\}");
+
+        String documentContent = documents.stream()
+                .map(doc -> {
+                    String content = doc.getContent();
+                    Matcher jsonMatcher = jsonPattern.matcher(content);
+
+                    // 如果內容是 JSON，則保持原樣
+                    if (jsonMatcher.find()) {
+                        return content;
+                    }
+
+                    // 否則進行模板化處理
+                    return content;
+                })
+                .collect(Collectors.joining("\n")); // 將所有內容合併為一個字符串
+
+        return documentContent;
+    }
 
 
     @PostMapping("/analysisMD")
-    public String analysisMD(@RequestParam(value = "file") MultipartFile file) {
+    public String analysisMD(@RequestParam(value = "PayName") String PayName, @RequestParam(value = "file") MultipartFile file) throws AI_DemoException {
 
-        mDsplitService.MDsplit(file);
+//        if (file != null) {
+//            throw new AI_DemoException(ErrorEnum.FILE_NULL,"File is null or empty");
+//        }
+
+        mDsplitService.MDsplit(PayName, file);
 
         return "MD OK";
     }
+
+    @PostMapping("/Search")
+    public List<String> Search(@RequestParam(value = "Title") String Title, @RequestParam(value = "PayName") String PayName) throws AI_DemoException {
+
+//        if (file != null) {
+//            throw new AI_DemoException(ErrorEnum.FILE_NULL,"File is null or empty");
+//        }
+
+
+        return pgVectorStore.SearchMataData(Title, PayName);
+    }
+
 }

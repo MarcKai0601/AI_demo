@@ -1,5 +1,7 @@
 package com.example.ai_demo.RAG.service;
 
+import com.example.ai_demo.RAG.enumlist.ErrorEnum;
+import com.example.ai_demo.RAG.exception.AI_DemoException;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -14,9 +16,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,13 +27,17 @@ public class MDsplitService {
     @Resource
     private VectorStore vectorStore;
 
-    public void MDsplit(MultipartFile file) {
+    @Resource
+    private PgVectorStore pgVectorStore;
+
+    public void MDsplit(String PayName, MultipartFile file) throws AI_DemoException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             StringBuilder contentBuilder = new StringBuilder();
             String currentSection = null;
             int currentHeadingLevel = Integer.MAX_VALUE; // 跟踪當前標題層級
             List<Document> info = new ArrayList<>();
+            Map<String, Object> docMap = new LinkedHashMap<>();
 
             // 正則表達式匹配標題（如 ##, ###, ####），但排除 # 標題
             Pattern headingPattern = Pattern.compile("^(#+)\\s*(.+)");
@@ -57,7 +61,14 @@ public class MDsplitService {
                             // 當遇到同級別或更高級別的標題，將之前的段落內容寫入
                             log.info("章節標題: " + currentSection + "\n" + contentBuilder.toString().trim() + "\n" + "---------" + currentSection + " END ----------");
 
-                            info.add(new Document(currentSection + "\n" + contentBuilder.toString()));
+                            docMap.put("PayName", PayName);
+                            docMap.put("Title", currentSection);
+
+                            if (pgVectorStore.SearchMataData(currentSection, PayName) != null) {
+                                throw new AI_DemoException(ErrorEnum.REPEATED_WRITUNG_ERROR, ErrorEnum.REPEATED_WRITUNG_ERROR.getMessage());
+                            }
+
+                            info.add(new Document(currentSection + "\n" + contentBuilder.toString(), docMap));
                             vectorStore.add(info);
                             info.clear(); // 清除已加入的資料
                         }
@@ -82,7 +93,15 @@ public class MDsplitService {
             if (currentSection != null) {
                 log.info("章節標題: " + currentSection + "\n" + contentBuilder.toString().trim() + "\n" + "---------" + currentSection + " END ----------");
 
-                info.add(new Document(currentSection + "\n" + contentBuilder.toString()));
+                docMap.put("PayName", PayName);
+                docMap.put("Title", currentSection);
+
+
+                if (pgVectorStore.SearchMataData(currentSection, PayName) != null) {
+                    throw new AI_DemoException(ErrorEnum.REPEATED_WRITUNG_ERROR, ErrorEnum.REPEATED_WRITUNG_ERROR.getMessage());
+                }
+
+                info.add(new Document(currentSection + "\n" + contentBuilder.toString(), docMap));
                 vectorStore.add(info);
             }
 
@@ -94,7 +113,7 @@ public class MDsplitService {
     }
 
     // 模板，這裡假設已經有一個 PromptTemplate 類
-//    private final PromptTemplate template = new PromptTemplate("## {title}\n\n{content}");
+//    private final PromptTemplate template = new PromptTemplate("## {PayName}\n\n{content}");
 //
 //    public void MDsplit(MultipartFile file) {
 //        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
@@ -132,7 +151,7 @@ public class MDsplitService {
 //                        if (currentSection != null) {
 //                            // 當遇到同級別或更高級別的標題，將之前的段落內容寫入
 //                            String renderedContent = template.render(Map.of(
-//                                    "title", currentSection,
+//                                    "PayName", currentSection,
 //                                    "content", contentBuilder.toString().trim()
 //                            ));
 //
@@ -162,7 +181,7 @@ public class MDsplitService {
 //            // 最後一個章節寫入
 //            if (currentSection != null) {
 //                String renderedContent = template.render(Map.of(
-//                        "title", currentSection,
+//                        "PayName", currentSection,
 //                        "content", contentBuilder.toString().trim()
 //                ));
 //
