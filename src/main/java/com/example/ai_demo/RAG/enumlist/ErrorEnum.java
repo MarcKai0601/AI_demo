@@ -6,7 +6,9 @@ public enum ErrorEnum{
 
     FILE_NULL("0001", "File can't null"),
 
-    REPEATED_WRITUNG_ERROR("0002", "Repeated writting error")
+    REPEATED_WRITUNG_ERROR("0002", "Repeated writting error"),
+    PAYNAME_EMPTY_ERROR("0003", "Payname is empty"),
+    FILE_EMPTY_ERROR("0004", "File is empty"),
 
     ;
 

@@ -1,14 +1,11 @@
-package com.example.ai_demo.RAG.controller;
+package com.example.ai_demo.RAG.controller.postagres;
 
 import com.example.ai_demo.RAG.enumlist.ErrorEnum;
 import com.example.ai_demo.RAG.exception.AI_DemoException;
 import com.example.ai_demo.RAG.service.MDsplitService;
 import com.example.ai_demo.RAG.service.PgVectorStore;
+import com.example.ai_demo.RAG.test.RedisTestService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.io.RandomAccessReadBuffer;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -19,10 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.print.Doc;
-import javax.swing.event.ListDataEvent;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +39,9 @@ public class PostgresController {
 
     @Autowired
     private PgVectorStore pgVectorStore;
+
+    @Autowired
+    private RedisTestService redisTestService;
 
 //    @PostMapping("/analysisPDF")
 //    public String analysisPDF(@RequestParam(value = "file") MultipartFile file) {
@@ -239,13 +235,18 @@ public class PostgresController {
 
 
     @PostMapping("/analysisMD")
-    public String analysisMD(@RequestParam(value = "PayName") String PayName, @RequestParam(value = "file") MultipartFile file) throws AI_DemoException {
+    public String analysisMD(AddpostagresFileRequest request) throws AI_DemoException {
 
-//        if (file != null) {
-//            throw new AI_DemoException(ErrorEnum.FILE_NULL,"File is null or empty");
-//        }
+        if (request.getPayName() == null) {
+            throw new AI_DemoException(ErrorEnum.PAYNAME_EMPTY_ERROR,ErrorEnum.PAYNAME_EMPTY_ERROR.getMessage());
+        }
 
-        mDsplitService.MDsplit(PayName, file);
+        if (request.getFile() == null || request.getFile().isEmpty()) {
+            throw new AI_DemoException(ErrorEnum.FILE_EMPTY_ERROR, "File cannot be empty");
+        }
+
+
+        mDsplitService.MDsplit(request.getPayName(), request.getFile());
 
         return "MD OK";
     }
@@ -259,6 +260,13 @@ public class PostgresController {
 
 
         return pgVectorStore.SearchMataData(Title, PayName);
+    }
+
+    @GetMapping("/test")
+    public String test() throws AI_DemoException {
+        redisTestService.testConnection();
+
+        return "test OK";
     }
 
 }
