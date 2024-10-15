@@ -8,6 +8,7 @@ import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,6 +32,9 @@ public class MDsplitService {
     @Resource
     private PgVectorStore pgVectorStore;
 
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
     public void MDsplit(String PayName, MultipartFile file) throws AI_DemoException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
@@ -38,6 +43,7 @@ public class MDsplitService {
             int currentHeadingLevel = Integer.MAX_VALUE; // 跟踪當前標題層級
             List<Document> info = new ArrayList<>();
             Map<String, Object> docMap = new LinkedHashMap<>();
+            List redisList = new ArrayList();
 
             // 正則表達式匹配標題（如 ##, ###, ####），但排除 # 標題
             Pattern headingPattern = Pattern.compile("^(#+)\\s*(.+)");
@@ -63,12 +69,15 @@ public class MDsplitService {
 
                             docMap.put("PayName", PayName);
                             docMap.put("Title", currentSection);
+                            redisList.add(docMap);
 
                             if (pgVectorStore.SearchMataData(currentSection, PayName) != null) {
                                 vectorStore.delete(pgVectorStore.SearchMataData(currentSection, PayName));
                             }
 
                             info.add(new Document(currentSection + "\n" + contentBuilder.toString(), docMap));
+                            redisTemplate.opsForList().rightPush(PayName, currentSection);
+                            redisTemplate.expire(PayName, 1, TimeUnit.MINUTES);
                             vectorStore.add(info);
                             info.clear(); // 清除已加入的資料
                         }
@@ -87,6 +96,8 @@ public class MDsplitService {
                         contentBuilder.append(line).append("\n");
                     }
                 }
+
+
             }
 
             // 最後一個章節寫入
@@ -102,6 +113,10 @@ public class MDsplitService {
                 }
 
                 info.add(new Document(currentSection + "\n" + contentBuilder.toString(), docMap));
+                // 写入一个键值对到 Redis
+                redisTemplate.opsForList().rightPush(PayName, currentSection);
+                redisTemplate.expire(PayName, 1, TimeUnit.MINUTES);
+
                 vectorStore.add(info);
             }
 
