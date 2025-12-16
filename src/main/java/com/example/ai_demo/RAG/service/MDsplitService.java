@@ -17,6 +17,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -35,15 +37,23 @@ public class MDsplitService {
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
 
+    private static DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+
     public void MDsplit(String PayName, MultipartFile file) throws AI_DemoException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            StringBuilder contentBuilder = new StringBuilder();
-            String currentSection = null;
+
             int currentHeadingLevel = Integer.MAX_VALUE; // 跟踪當前標題層級
+
+            String line;
+            String currentSection = null;
+
+            StringBuilder contentBuilder = new StringBuilder();
+
             List<Document> info = new ArrayList<>();
-            Map<String, Object> docMap = new LinkedHashMap<>();
             List redisList = new ArrayList();
+
+            Map<String, Object> docMap = new LinkedHashMap<>();
 
             // 正則表達式匹配標題（如 ##, ###, ####），但排除 # 標題
             Pattern headingPattern = Pattern.compile("^(#+)\\s*(.+)");
@@ -69,6 +79,7 @@ public class MDsplitService {
 
                             docMap.put("PayName", PayName);
                             docMap.put("Title", currentSection);
+                            docMap.put("UpdateTime", dateFormat.format(System.currentTimeMillis()));
                             redisList.add(docMap);
 
                             if (pgVectorStore.SearchMataData(currentSection, PayName) != null) {
@@ -76,8 +87,8 @@ public class MDsplitService {
                             }
 
                             info.add(new Document(currentSection + "\n" + contentBuilder.toString(), docMap));
-                            redisTemplate.opsForList().rightPush(PayName, currentSection);
-                            redisTemplate.expire(PayName, 1, TimeUnit.MINUTES);
+//                            redisTemplate.opsForList().rightPush(PayName, currentSection);
+//                            redisTemplate.expire(PayName, 1, TimeUnit.MINUTES);
                             vectorStore.add(info);
                             info.clear(); // 清除已加入的資料
                         }
@@ -106,6 +117,7 @@ public class MDsplitService {
 
                 docMap.put("PayName", PayName);
                 docMap.put("Title", currentSection);
+                docMap.put("UpdateTime", dateFormat.format(System.currentTimeMillis()));
 
 
                 if (pgVectorStore.SearchMataData(currentSection, PayName) != null) {
@@ -113,9 +125,9 @@ public class MDsplitService {
                 }
 
                 info.add(new Document(currentSection + "\n" + contentBuilder.toString(), docMap));
-                // 写入一个键值对到 Redis
-                redisTemplate.opsForList().rightPush(PayName, currentSection);
-                redisTemplate.expire(PayName, 1, TimeUnit.MINUTES);
+//                // 写入一个键值对到 Redis
+//                redisTemplate.opsForList().rightPush(PayName, currentSection);
+//                redisTemplate.expire(PayName, 1, TimeUnit.MINUTES);
 
                 vectorStore.add(info);
             }

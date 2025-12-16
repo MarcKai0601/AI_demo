@@ -258,15 +258,29 @@ public class PostgresController {
 //            throw new AI_DemoException(ErrorEnum.FILE_NULL,"File is null or empty");
 //        }
 
-
         return pgVectorStore.SearchMataData(Title, PayName);
     }
 
-    @GetMapping("/test")
-    public String test() throws AI_DemoException {
-        redisTestService.testConnection();
 
-        return "test OK";
+    @GetMapping("/test")
+    public String test(@RequestParam String PayName) throws AI_DemoException {
+
+        //        redisTestService.testListOperations();
+
+        // 调用pgVectorStore进行搜索
+        List<String> list = pgVectorStore.SearchMataDataForPayName(PayName); // 修正方法名
+        if (list == null || list.isEmpty()) {
+            return "No data found for: " + PayName;
+        }
+
+        // 将列表中的内容逐个输出，每个内容之间换行
+        StringBuilder contentBuilder = new StringBuilder();
+        for (String item : list) {
+            contentBuilder.append(item).append("\n");  // 使用换行符分隔
+        }
+
+        return contentBuilder.toString().trim(); // 返回拼接后的字符串，去掉最后的换行符
     }
+
 
 }

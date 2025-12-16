@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -15,7 +16,8 @@ public class RedisTestService {
     public String testConnection() {
         try {
             // 写入一个键值对到 Redis
-            redisTemplate.opsForValue().set("testKey", "Hello Redis",1, TimeUnit.MINUTES);
+//            redisTemplate.opsForValue().set("testKey", "Hello Redis",1, TimeUnit.MINUTES);
+            redisTemplate.opsForValue().set("testKey", "Hello Redis");
             // 读取 Redis 中的值
             return redisTemplate.opsForValue().get("testKey");
         } catch (Exception e) {
@@ -40,4 +42,23 @@ public class RedisTestService {
             e.printStackTrace();
         }
     }
+
+    public List<String> queryListOperations() {
+        // 获取整个列表
+        List<String> values = redisTemplate.opsForList().range("testList", 0, -1);
+
+        // 检查列表是否为空
+        if (values != null && !values.isEmpty()) {
+            System.out.println("List values:");
+            for (String value : values) {
+                System.out.println(value);
+            }
+        } else {
+            System.out.println("The list is empty or does not exist.");
+        }
+
+        return values;
+
+    }
+
 }
